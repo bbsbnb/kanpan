@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 智能看盘系统</title>
+<style>
+:root {
+  --bg: #050b15;
+  --panel: rgba(9, 18, 32, 0.86);
+  --panel-2: rgba(13, 28, 50, 0.74);
+  --border: rgba(81, 129, 199, 0.28);
+  --border-strong: rgba(45, 122, 255, 0.62);
+  --text: #f2f7ff;
+  --muted: #8493ad;
+  --muted-2: #59677e;
+  --blue: #159eff;
+  --cyan: #20d6ff;
+  --purple: #7a54ff;
+  --red: #ff3d4f;
+  --green: #10c979;
+  --yellow: #ffc247;
+  --shadow: 0 22px 60px rgba(0, 0, 0, 0.38);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 76% 18%, rgba(21, 89, 191, 0.24), transparent 34%),
+    radial-gradient(circle at 18% 42%, rgba(28, 213, 255, 0.08), transparent 32%),
+    linear-gradient(135deg, #040914 0%, #071323 52%, #050a13 100%);
+  overflow: auto;
+}
+
+button, input { font: inherit; }
+button { cursor: pointer; }
+
+.app-shell { min-width: 1220px; height: 100vh; display: grid; grid-template-rows: 76px 1fr; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 42px;
+  border-bottom: 1px solid rgba(52, 79, 118, 0.35);
+  background: rgba(4, 10, 19, 0.64);
+  backdrop-filter: blur(18px);
+}
+
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  position: relative;
+  filter: drop-shadow(0 0 16px rgba(32, 214, 255, 0.48));
+}
+.brand-mark::before,
+.brand-mark::after {
+  content: "";
+  position: absolute;
+  background: var(--cyan);
+}
+.brand-mark::before {
+  inset: 7px 4px 3px;
+  border-radius: 9px 9px 14px 14px;
+  clip-path: polygon(0 14%, 16% 14%, 25% 0, 75% 0, 84% 14%, 100% 14%, 92% 78%, 50% 100%, 8% 78%);
+}
+.brand-mark::after {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  left: 7px;
+  top: 5px;
+  box-shadow: 18px 0 0 var(--cyan);
+}
+.brand-title { font-size: 24px; font-weight: 900; letter-spacing: -0.7px; }
+.brand-title span { color: var(--cyan); margin-right: 8px; }
+.online { display: flex; align-items: center; gap: 9px; color: #00d86c; font-weight: 800; }
+.online::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #00d86c; box-shadow: 0 0 12px #00d86c; }
+.top-spacer { flex: 1; }
+.clock { color: #98a8c3; font-size: 14px; }
+.bell { position: relative; font-size: 23px; color: #bcd2f4; }
+.bell::after {
+  content: "12";
+  position: absolute;
+  right: -10px;
+  top: -12px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff3854;
+  color: white;
+  font-size: 10px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 900;
+}
+.avatar { display: flex; align-items: center; gap: 13px; color: #7f93b6; }
+.avatar-face {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 39%, #0b1a32 0 8px, transparent 9px),
+    radial-gradient(circle at 50% 76%, #0b1a32 0 13px, transparent 14px),
+    linear-gradient(145deg, #9db8ff, #405fc1);
+  box-shadow: inset 0 0 18px rgba(255,255,255,.25), 0 0 16px rgba(65, 107, 230, .42);
+}
+
+.workspace { display: grid; grid-template-columns: 340px minmax(880px, 1fr); min-height: 0; }
+
+.sidebar {
+  margin: 12px 22px 18px 20px;
+  max-height: calc(100vh - 106px);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(4, 10, 18, .92), rgba(9, 20, 36, .86));
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  overflow: hidden;
+}
+.sidebar-inner { padding: 22px 22px 0; }
+.search-wrap { position: relative; }
+.search {
+  width: 100%;
+  height: 45px;
+  border-radius: 7px;
+  border: 1px solid rgba(81, 129, 199, .35);
+  background: rgba(2, 8, 16, .72);
+  color: var(--text);
+  outline: none;
+  padding: 0 46px 0 15px;
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, .28);
+}
+.search::placeholder { color: #7d8ba1; font-weight: 700; }
+.search-icon { position: absolute; right: 16px; top: 11px; color: var(--blue); font-size: 21px; }
+.pool-head { display: flex; align-items: center; justify-content: space-between; margin: 25px 0 18px; color: #aebbd1; font-weight: 800; }
+.pool-head button { border: 0; background: transparent; color: var(--blue); font-weight: 800; }
+.stock-list { list-style: none; margin: 0; padding: 0; min-height: 0; overflow-y: auto; }
+.stock-card {
+  min-height: 149px;
+  display: grid;
+  grid-template-columns: 1fr 112px;
+  align-items: center;
+  gap: 10px;
+  padding: 19px 20px 17px 25px;
+  border-top: 1px solid rgba(53, 79, 118, .28);
+  border-left: 4px solid transparent;
+  background: rgba(7, 17, 31, .38);
+  transition: .18s ease;
+}
+.stock-card.active {
+  border-left-color: #1e71ff;
+  background: linear-gradient(100deg, rgba(24, 54, 139, .76), rgba(54, 33, 91, .42));
+  box-shadow: inset 0 0 32px rgba(58, 82, 255, .15);
+}
+.stock-name { font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+.stock-code { color: #8c9bb4; font-size: 15px; margin-bottom: 13px; }
+.stock-price { font-size: 20px; font-weight: 900; margin-bottom: 10px; }
+.stock-change { color: var(--red); font-weight: 900; letter-spacing: .2px; }
+.spark { width: 98px; height: 46px; }
+.analyze-btn {
+  margin: 24px 22px;
+  height: 49px;
+  border: 0;
+  border-radius: 7px;
+  color: white;
+  font-size: 17px;
+  font-weight: 900;
+  background: linear-gradient(100deg, #18ccf4, #7b48ff);
+  box-shadow: 0 14px 35px rgba(36, 120, 255, .32);
+}
+.analyze-btn:disabled { opacity: .55; cursor: wait; }
+.help { border-top: 1px solid rgba(53, 79, 118, .35); padding: 22px 26px; display: flex; align-items: center; justify-content: space-between; color: #afbdd7; font-weight: 800; }
+.help span:first-child { display: flex; align-items: center; gap: 12px; }
+.help-dot { width: 18px; height: 18px; border-radius: 50%; background: #75b9ff; color: #061326; display: inline-grid; place-items: center; font-size: 12px; font-weight: 1000; }
+
+.main { padding: 12px 22px 18px 0; overflow: auto; }
+.main-grid { width: 100%; max-width: 968px; min-width: 880px; margin: 0 auto; }
+.hero {
+  height: 316px;
+  border: 1px solid rgba(31, 89, 202, .45);
+  border-radius: 9px;
+  background:
+    linear-gradient(100deg, rgba(9, 38, 92, .96), rgba(5, 22, 49, .90)),
+    radial-gradient(circle at 72% 47%, rgba(23, 143, 255, .34), transparent 26%);
+  position: relative;
+  overflow: hidden;
+  padding: 48px 40px;
+  box-shadow: inset 0 0 55px rgba(19, 96, 229, .13), var(--shadow);
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 115px -20px -40px 240px;
+  background-image:
+    linear-gradient(rgba(44, 124, 255, .12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(44, 124, 255, .12) 1px, transparent 1px);
+  background-size: 34px 34px;
+  transform: perspective(420px) rotateX(63deg) skewX(-18deg);
+  opacity: .55;
+}
+.hero-content { position: relative; z-index: 2; }
+.hero h1 { margin: 0 0 14px; font-size: 28px; line-height: 1.25; letter-spacing: -.6px; }
+.gradient-text { background: linear-gradient(90deg, #2fe1ff, #735dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-sub { color: #9eacd0; font-size: 16px; font-weight: 700; margin-bottom: 48px; }
+.feature-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(28px, 6vw, 80px); width: min(520px, 62%); }
+.feature-icon { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; margin-bottom: 14px; background: linear-gradient(145deg, rgba(21, 107, 255, .55), rgba(7, 27, 70, .82)); border: 1px solid rgba(42, 133, 255, .6); box-shadow: inset 0 0 18px rgba(35, 183, 255, .22); color: var(--cyan); font-size: 24px; }
+.feature-title { font-size: 16px; font-weight: 900; margin-bottom: 8px; }
+.feature-desc { color: #7988a4; font-size: 13px; white-space: nowrap; }
+.hero-art { position: absolute; right: 56px; top: 39px; width: 290px; height: 220px; z-index: 2; }
+.platform { position: absolute; left: 28px; bottom: 12px; width: 246px; height: 82px; border-radius: 50%; background: linear-gradient(180deg, rgba(32, 136, 255, .9), rgba(23, 42, 143, .95)); box-shadow: 0 20px 38px rgba(0,0,0,.42), inset 0 -10px 22px rgba(3, 19, 67, .72); }
+.platform::before { content:""; position:absolute; inset:10px 22px 23px; border-radius:50%; background: radial-gradient(circle, rgba(44,222,255,.82), rgba(43,116,255,.62) 52%, transparent 54%); border:1px solid rgba(99, 191, 255, .7); }
+.platform::after { content:""; position:absolute; inset:-21px -28px 18px; border-radius:50%; border:1px solid rgba(28, 145, 255, .55); }
+.screen { position:absolute; left:65px; top:11px; width:184px; height:118px; border-radius: 11px 11px 2px 2px; border:1px solid rgba(38, 116, 255, .8); background: linear-gradient(150deg, rgba(9, 49, 125, .8), rgba(4, 17, 46, .84)); transform: perspective(360px) rotateY(-13deg) rotateX(4deg); box-shadow: 0 0 26px rgba(24, 116, 255, .42); }
+.screen::before { content:""; position:absolute; left:16px; top:35px; width:116px; height:58px; background: none; border-left:2px solid rgba(29,149,255,.24); border-bottom:2px solid rgba(29,149,255,.24); }
+.chart-line { position:absolute; left:22px; top:42px; width:106px; height:50px; }
+.bars { position:absolute; right:15px; bottom:15px; display:flex; align-items:flex-end; gap:7px; height:62px; }
+.bars i { width:11px; background: linear-gradient(180deg, #23c9ff, #2456ff); display:block; border-radius:2px 2px 0 0; opacity:.86; }
+.stand { position:absolute; left:147px; top:128px; width:18px; height:43px; background: linear-gradient(#2c8cff, #153c96); transform: skewX(-8deg); }
+
+.content-row { display: grid; grid-template-columns: 1.65fr .95fr; gap: 16px; margin-top: 18px; }
+.panel { border: 1px solid var(--border); border-radius: 9px; background: linear-gradient(145deg, rgba(10, 20, 36, .88), rgba(7, 14, 26, .8)); box-shadow: var(--shadow); }
+.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 26px 23px 12px; }
+.panel-title { display:flex; align-items:center; gap:9px; font-size:20px; font-weight: 1000; }
+.panel-title::before { content:""; width:4px; height:19px; border-radius: 5px; background: linear-gradient(#2cddff, #5b51ff); box-shadow:0 0 12px rgba(43,151,255,.8); }
+.info-dot { width:17px; height:17px; border-radius:50%; background:#476b9e; color:#0a1425; display:inline-grid; place-items:center; font-size:11px; font-weight:1000; cursor: pointer; }
+.time { color:#8492aa; font-size:12px; }
+.market-body { padding: 0 23px 25px; }
+.index-cards { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:15px; }
+.index-card { height:169px; border-radius: 7px; padding: 20px 17px 12px; background: linear-gradient(145deg, rgba(35, 48, 66, .54), rgba(17, 27, 44, .7)); cursor: pointer; transition: .18s ease; }
+.index-card:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgba(43, 184, 255, .38), 0 12px 30px rgba(0,0,0,.22); }
+.index-name { color:#dce6f7; font-weight:800; margin-bottom:12px; }
+.index-value { font-size:19px; font-weight:1000; margin-bottom:11px; }
+.index-change { color: var(--red); font-size:13px; font-weight:900; }
+.index-spark { height:48px; margin-top:20px; }
+.dist-title { margin-top:27px; margin-bottom:14px; font-weight:900; }
+.dist-bar { height:13px; border-radius: 999px; display:grid; grid-template-columns: 55% 8% 37%; overflow:hidden; box-shadow: inset 0 0 10px rgba(0,0,0,.28); cursor: pointer; }
+.dist-bar b:nth-child(1) { background: linear-gradient(90deg, #ff5462, #ff2d49); }
+.dist-bar b:nth-child(2) { background: #8ba0b2; }
+.dist-bar b:nth-child(3) { background: linear-gradient(90deg, #11a95f, #0dc979); }
+.dist-labels { display:flex; justify-content:space-between; margin-top:14px; font-size:15px; font-weight:900; }
+.dist-labels span:nth-child(1) { color:var(--red); }
+.dist-labels span:nth-child(2) { color:#94a1b5; }
+.dist-labels span:nth-child(3) { color:var(--green); }
+
+.sentiment { min-height: 376px; display:flex; flex-direction:column; }
+.gauge-wrap { flex:1; display:grid; place-items:center; padding-top:16px; }
+.gauge { width:226px; height:122px; position:relative; overflow:hidden; cursor: pointer; }
+.gauge svg { width:226px; height:122px; display:block; }
+.score { position:absolute; left:0; right:0; top:48px; text-align:center; font-size:51px; font-weight:1000; line-height:1; }
+.score-label { position:absolute; left:0; right:0; top:101px; text-align:center; color:#cbd7ee; font-weight:900; }
+.gauge-scale { width:210px; margin: -3px auto 0; display:flex; justify-content:space-between; color:#8b99b0; }
+.sentiment-text { text-align:center; margin-top:26px; font-size:16px; font-weight:900; }
+.sentiment-foot { margin-top:auto; border-top:1px solid rgba(67, 93, 132, .3); padding:16px 23px 23px; display:flex; justify-content:space-between; color:#75849c; font-size:12px; }
+
+.records { margin-top:18px; padding: 28px 24px 17px; }
+.records h2 { margin:0 0 16px; font-size:20px; }
+.record-table { width:100%; border-collapse:collapse; font-size:14px; }
+.record-table th { color:#8e9bb2; text-align:left; padding: 13px 12px; background: rgba(22, 34, 52, .54); font-weight:900; }
+.record-table td { padding: 15px 12px; border-bottom:1px solid rgba(51, 76, 112, .32); color:#e6edf9; font-weight:800; }
+.record-table .summary { color:#03d778; font-size:13px; }
+.tag { display:inline-block; padding:6px 10px; border-radius:7px; color:#2bb8ff; background:rgba(14, 118, 255, .22); font-weight:900; }
+.tag.purple { color:#a278ff; background:rgba(108, 71, 255, .22); }
+.tag.green { color:#24d5d6; background:rgba(30, 206, 178, .16); }
+.detail { color:#1d9dff; font-weight:1000; }
+.more-row { display:flex; justify-content:center; padding-top:16px; }
+.more-btn { min-width:178px; height:39px; border-radius:8px; border:1px solid rgba(64, 111, 177, .55); background:rgba(9, 18, 32, .82); color:#1da3ff; font-weight:1000; }
+.clickable { cursor: pointer; }
+.clickable:hover { filter: brightness(1.12); }
+
+.toast { position: fixed; right: 28px; bottom: 24px; max-width: 360px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 9px; background: rgba(8, 18, 32, .95); color: #dce8ff; box-shadow: var(--shadow); transform: translateY(90px); opacity: 0; transition: .2s ease; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.modal-mask { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0, 0, 0, .58); backdrop-filter: blur(10px); z-index: 20; }
+.modal-mask.show { display: grid; }
+.modal { width: min(520px, calc(100vw - 36px)); max-height: calc(100vh - 64px); display: flex; flex-direction: column; border: 1px solid var(--border-strong); border-radius: 12px; background: linear-gradient(145deg, rgba(11, 23, 42, .98), rgba(6, 13, 25, .98)); box-shadow: 0 30px 90px rgba(0,0,0,.55), inset 0 0 34px rgba(21, 158, 255, .12); overflow: hidden; }
+.modal-head { display:flex; align-items:center; justify-content:space-between; padding: 18px 20px; border-bottom: 1px solid rgba(81,129,199,.28); font-size: 18px; font-weight: 1000; }
+.modal-close { border: 0; background: transparent; color: #9fb1cd; font-size: 24px; line-height: 1; }
+.modal-body { padding: 20px; color: #cdd8ec; line-height: 1.8; overflow-y: auto; min-height: 0; }
+.modal-body b { color: #fff; }
+.modal-body .green { color: var(--green); font-weight: 900; }
+.modal-body .blue { color: var(--cyan); font-weight: 900; }
+.agent-detail { margin-top: 18px; display: grid; gap: 12px; }
+.agent-section-title { font-size: 16px; font-weight: 1000; color: #ffffff; padding-top: 4px; }
+.agent-card { border: 1px solid rgba(81,129,199,.28); border-radius: 9px; padding: 13px 14px; background: rgba(7, 17, 31, .58); }
+.agent-card h4 { margin: 0 0 8px; color: #ffffff; font-size: 15px; }
+.agent-card p { margin: 5px 0; }
+.agent-report { margin-top: 8px; white-space: pre-wrap; color: #aebbd1; line-height: 1.65; }
+
+@media (max-width: 1220px) {
+  .app-shell { height: 100vh; }
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div class="brand-title"><span>AI</span>智能看盘系统</div>
+    </div>
+    <div class="online">在线</div>
+    <div class="top-spacer"></div>
+    <div class="clock" id="clock">2026/07/13 11:00:37</div>
+    <div class="bell clickable" id="notifyBtn" aria-label="通知">🔔</div>
+    <div class="avatar clickable" id="profileBtn"><div class="avatar-face"></div><span>⌄</span></div>
+  </header>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="sidebar-inner">
+        <div class="search-wrap">
+          <input class="search" id="searchInput" placeholder="输入股票代码搜索..." />
+          <span class="search-icon">⌕</span>
+        </div>
+        <div class="pool-head"><span>自选股池</span><button type="button" id="editWatchlistBtn">编辑</button></div>
+      </div>
+      <ul class="stock-list" id="stockList"></ul>
+      <button class="analyze-btn" id="analyzeBtn" type="button">⌁ 分析选中股票</button>
+      <div class="help clickable" id="helpBtn"><span><i class="help-dot">i</i>使用帮助</span><span>›</span></div>
+    </aside>
+
+    <main class="main">
+      <div class="main-grid">
+        <section class="hero">
+          <div class="hero-content">
+            <h1>您好，欢迎使用 <span class="gradient-text">AI 智能看盘系统</span> 👋</h1>
+            <div class="hero-sub">AI 驱动 · 智能分析 · 精准决策</div>
+            <div class="feature-row">
+              <div class="clickable" data-feature="智能分析"><div class="feature-icon">▥</div><div class="feature-title">智能分析</div><div class="feature-desc">AI 模型深度分析市场数据</div></div>
+              <div class="clickable" data-feature="精准预测"><div class="feature-icon">◎</div><div class="feature-title">精准预测</div><div class="feature-desc">多维度预测股票走势</div></div>
+              <div class="clickable" data-feature="实时监控"><div class="feature-icon">ϟ</div><div class="feature-title">实时监控</div><div class="feature-desc">7x24 小时市场监控</div></div>
+            </div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="screen">
+              <svg class="chart-line" viewBox="0 0 120 58"><polyline points="0,45 13,22 27,39 42,15 57,30 73,9 88,26 105,7 118,0" fill="none" stroke="#1bd8ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <div class="bars"><i style="height:26px"></i><i style="height:45px"></i><i style="height:34px"></i><i style="height:58px"></i></div>
+            </div>
+            <div class="stand"></div>
+            <div class="platform"></div>
+          </div>
+        </section>
+
+        <div class="content-row">
+          <section class="panel market">
+            <div class="panel-head"><div class="panel-title">市场概览 <span class="info-dot" data-market-info="overview" onclick="openMarketInfo('overview')">?</span></div><div class="time">更新时间：<span data-time>11:00:37</span></div></div>
+            <div class="market-body">
+              <div class="index-cards" id="indexCards"></div>
+              <div class="dist-title">市场涨跌分布</div>
+              <div class="dist-bar" id="marketBreadthBtn" role="button" tabindex="0" aria-label="查看市场涨跌分布" onclick="openMarketBreadth()"><b></b><b></b><b></b></div>
+              <div class="dist-labels"><span>上涨 2,134</span><span>平盘 214</span><span>下跌 1,023</span></div>
+            </div>
+          </section>
+
+          <section class="panel sentiment">
+            <div class="panel-head"><div class="panel-title">AI 市场情绪 <span class="info-dot" data-market-info="sentiment" onclick="openMarketInfo('sentiment')">?</span></div></div>
+            <div class="gauge-wrap">
+              <div>
+                <div class="gauge" id="sentimentDetailBtn" role="button" tabindex="0" aria-label="查看AI市场情绪详情" onclick="openSentimentDetail()">
+                  <svg viewBox="0 0 226 122">
+                    <path d="M 22 105 A 91 91 0 0 1 204 105" stroke="#26364f" stroke-width="18" fill="none" stroke-linecap="round"/>
+                    <path d="M 22 105 A 91 91 0 0 1 62 30" stroke="#58d765" stroke-width="18" fill="none" stroke-linecap="round"/>
+                    <path d="M 62 30 A 91 91 0 0 1 154 22" stroke="#ffc247" stroke-width="18" fill="none" stroke-linecap="butt"/>
+                    <path d="M 154 22 A 91 91 0 0 1 204 105" stroke="#d76c78" stroke-width="18" fill="none" stroke-linecap="round"/>
+                  </svg>
+                  <div class="score">62</div>
+                  <div class="score-label">中性偏多</div>
+                </div>
+                <div class="gauge-scale"><span>0</span><span>100</span></div>
+                <div class="sentiment-text">市场情绪较为乐观，短期趋势向好</div>
+              </div>
+            </div>
+            <div class="sentiment-foot"><span>数据来源：AI 情绪模型</span><span data-time>11:00:37</span></div>
+          </section>
+        </div>
+
+        <section class="panel records">
+          <h2>最近分析记录</h2>
+          <table class="record-table">
+            <thead><tr><th>股票名称</th><th>股票代码</th><th>分析时间</th><th>分析类型</th><th>结果摘要</th><th>操作</th></tr></thead>
+            <tbody id="recordRows"></tbody>
+          </table>
+          <div class="more-row"><button class="more-btn" id="showAllRecordsBtn" type="button">查看全部记录⌄</button></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal-mask" id="modalMask" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-head"><span id="modalTitle">详情</span><button class="modal-close" id="modalCloseBtn" type="button" aria-label="关闭">×</button></div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const stocks = [
+  { name: '贵州茅台', code: '600519.SH', apiCode: '600519', price: '¥1196.79', change: '+0.60（+0.05%）', active: true, points: '2,31 9,25 15,28 22,22 30,27 38,20 47,18 56,10 65,36 76,25 87,29 96,32' },
+  { name: '五 粮 液', code: '000858.SZ', apiCode: '000858', price: '¥72.25', change: '+0.00（0.00%）', points: '2,30 9,24 15,28 23,23 31,22 39,17 48,19 55,13 64,11 72,4 81,13 90,15 96,19' },
+  { name: '宁德时代', code: '300750.SZ', apiCode: '300750', price: '¥357.81', change: '+0.00（0.00%）', points: '2,31 8,26 14,29 22,25 31,27 39,19 49,20 57,12 66,14 73,2 82,10 91,14 97,17' }
+];
+
+const indexes = [
+  { name: '上证指数', value: '3,427.21', change: '+12.34   +0.36%', points: '0,39 10,34 19,33 29,24 39,20 49,29 58,27 68,19 78,6 88,36 99,28 110,30' },
+  { name: '深证成指', value: '10,256.08', change: '+35.87   +0.35%', points: '0,39 10,36 21,29 31,23 41,20 53,28 63,25 73,7 84,36 95,30 110,25' },
+  { name: '创业板指', value: '2,056.98', change: '+8.43   +0.41%', points: '0,38 9,35 20,28 31,25 42,17 53,27 64,25 74,18 85,6 96,37 110,30' }
+];
+
+const marketBreadth = { up: 2134, flat: 214, down: 1023 };
+
+const sentimentState = { score: 62, label: '中性偏多', trend: '市场情绪较为乐观，短期趋势向好' };
+
+const records = [
+  { name: '贵州茅台', code: '600519.SH', time: '2026-07-13 10:45:22', type: '技术分析', summary: '短期趋势向好，建议关注支撑位', tone: 'blue', detail: 'MA 均线维持多头排列，短线量能温和放大。建议关注 1180 附近支撑，跌破后降低仓位。' },
+  { name: '五 粮 液', code: '000858.SZ', time: '2026-07-13 10:30:18', type: '基本面分析', summary: '基本面稳健，长期投资价值较高', tone: 'purple', detail: '白酒板块估值修复中，现金流和品牌护城河稳定。适合中长期观察，短线弹性弱于成长板块。' },
+  { name: '宁德时代', code: '300750.SZ', time: '2026-07-13 09:15:45', type: '综合分析', summary: '综合评分优秀，建议持有', tone: 'green', detail: '趋势、资金和行业景气度评分均较高。若放量突破前高，可提高关注级别；若缩量回调，保持持有。' }
+];
+
+let selected = stocks[0];
+
+function sparkline(points, className = 'spark') {
+  return `<svg class="${className}" viewBox="0 0 100 46"><polyline points="${points}" fill="none" stroke="#ff3d4f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${points}" fill="none" stroke="rgba(255,61,79,.22)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
+function normalizeStockCode(value) {
+  const raw = value.trim().toUpperCase().replace(/\.(SH|SZ|BJ)$/, '');
+  return /^\d{6}$/.test(raw) ? raw : '';
+}
+
+function marketSuffix(apiCode) {
+  if (apiCode.startsWith('6')) return 'SH';
+  if (apiCode.startsWith('4') || apiCode.startsWith('8')) return 'BJ';
+  return 'SZ';
+}
+
+function formatPrice(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? `¥${number.toFixed(2)}` : '¥--';
+}
+
+function formatChange(value) {
+  const number = Number(value || 0);
+  const sign = number > 0 ? '+' : '';
+  return `${sign}${number.toFixed(2)}%`;
+}
+
+function buildStockFromInfo(info, fallbackCode) {
+  const apiCode = normalizeStockCode(info?.code || fallbackCode);
+  return {
+    name: info?.name || apiCode,
+    code: `${apiCode}.${marketSuffix(apiCode)}`,
+    apiCode,
+    price: formatPrice(info?.price),
+    change: formatChange(info?.change_pct),
+    points: '2,31 9,25 15,28 22,22 30,27 38,20 47,18 56,10 65,36 76,25 87,29 96,32'
+  };
+}
+
+function renderStocks() {
+  document.getElementById('stockList').innerHTML = stocks.map(stock => `
+    <li class="stock-card ${stock.code === selected.code ? 'active' : ''}" data-code="${stock.code}">
+      <div><div class="stock-name">${stock.name}</div><div class="stock-code">${stock.code}</div><div class="stock-price">${stock.price}</div><div class="stock-change">${stock.change}</div></div>
+      ${sparkline(stock.points)}
+    </li>
+  `).join('');
+}
+
+function renderIndexes() {
+  document.getElementById('indexCards').innerHTML = indexes.map(item => `
+    <div class="index-card" data-index="${item.name}" role="button" tabindex="0" aria-label="查看${item.name}详情" onclick="openIndexDetail('${item.name}')"><div class="index-name">${item.name}</div><div class="index-value">${item.value}</div><div class="index-change">${item.change}</div><div class="index-spark">${sparkline(item.points, 'spark')}</div></div>
+  `).join('');
+}
+
+function openIndexDetail(name) {
+  const item = indexes.find(index => index.name === name);
+  if (!item) return;
+  openModal(`${item.name} 指数详情`, `
+    <p><b>当前点位：</b><span class="blue">${item.value}</span></p>
+    <p><b>涨跌情况：</b><span class="green">${item.change}</span></p>
+    <p><b>走势判断：</b>短线维持震荡偏强，仍需结合成交量和市场宽度确认持续性。</p>
+    <p><b>操作含义：</b>指数向好时可提高观察频率，但个股仍以 5-Agent 分析结论为准。</p>
+  `);
+}
+
+function openMarketBreadth() {
+  const total = marketBreadth.up + marketBreadth.flat + marketBreadth.down;
+  openModal('市场涨跌分布', `
+    <p><b>上涨家数：</b><span class="green">${marketBreadth.up}</span>　<b>占比：</b>${(marketBreadth.up / total * 100).toFixed(1)}%</p>
+    <p><b>平盘家数：</b>${marketBreadth.flat}　<b>占比：</b>${(marketBreadth.flat / total * 100).toFixed(1)}%</p>
+    <p><b>下跌家数：</b><span class="blue">${marketBreadth.down}</span>　<b>占比：</b>${(marketBreadth.down / total * 100).toFixed(1)}%</p>
+    <p><b>市场宽度：</b>上涨家数明显多于下跌家数，说明当前盘面扩散度较好。</p>
+    <p><b>使用建议：</b>当上涨占比回落且情绪分同步走弱时，应降低追高操作频率。</p>
+  `);
+}
+
+function openSentimentDetail() {
+  openModal('AI 市场情绪详情', `
+    <p><b>情绪评分：</b><span class="blue">${sentimentState.score}</span> / 100</p>
+    <p><b>情绪状态：</b><span class="green">${sentimentState.label}</span></p>
+    <p><b>趋势判断：</b>${sentimentState.trend}</p>
+    <p><b>模型解释：</b>分数位于 50-70 区间，代表风险偏好温和改善，但尚未进入极端乐观区。</p>
+    <p><b>操作含义：</b>适合结合个股技术面和风控结果筛选机会，不建议仅凭情绪分追涨。</p>
+  `);
+}
+
+function openMarketInfo(type) {
+  if (type === 'sentiment') {
+    openModal('AI 市场情绪说明', '<p><b>AI 市场情绪</b>用于观察整体风险偏好，分数越高表示市场情绪越积极。</p><p>它不是买卖指令，需要和个股 5-Agent 分析、风险控制、仓位管理一起使用。</p>');
+    return;
+  }
+  openModal('市场概览说明', '<p><b>市场概览</b>用于快速观察主要指数、涨跌家数和市场宽度。</p><p>点击指数卡片可查看指数解释；点击涨跌分布条可查看上涨、平盘、下跌占比。</p>');
+}
+
+window.openIndexDetail = openIndexDetail;
+window.openMarketBreadth = openMarketBreadth;
+window.openSentimentDetail = openSentimentDetail;
+window.openMarketInfo = openMarketInfo;
+
+function renderRecords() {
+  document.getElementById('recordRows').innerHTML = records.map(row => `
+    <tr><td>${row.name}</td><td>${row.code}</td><td>${row.time}</td><td><span class="tag ${row.tone === 'blue' ? '' : row.tone}">${row.type}</span></td><td class="summary">${row.summary}</td><td><span class="detail clickable" data-record="${row.code}">查看详情</span></td></tr>
+  `).join('');
+}
+
+function updateClock() {
+  const now = new Date();
+  const text = now.toLocaleString('zh-CN', { hour12: false }).replaceAll('/', '/');
+  document.getElementById('clock').textContent = text;
+  document.querySelectorAll('[data-time]').forEach(el => el.textContent = now.toLocaleTimeString('zh-CN', { hour12: false }));
+}
+
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2600);
+}
+
+function openModal(title, html) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalMask').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalMask').classList.remove('show');
+}
+
+function stockByInput(value) {
+  const raw = value.trim().toUpperCase();
+  if (!raw) return null;
+  const code = normalizeStockCode(raw);
+  return stocks.find(stock => stock.apiCode === code || stock.code === raw || stock.name.includes(value.trim())) || null;
+}
+
+async function addStockByCode(apiCode) {
+  const resp = await fetch(`/api/info/${apiCode}`);
+  if (!resp.ok) throw new Error('未找到股票');
+  const info = await resp.json();
+  const stock = buildStockFromInfo(info, apiCode);
+  const oldIndex = stocks.findIndex(item => item.apiCode === stock.apiCode);
+  if (oldIndex >= 0) stocks.splice(oldIndex, 1, stock);
+  else stocks.unshift(stock);
+  selected = stock;
+  renderStocks();
+  return stock;
+}
+
+function openStockDetail(stock) {
+  openModal(`${stock.name} · ${stock.code}`, `
+    <p><b>当前价格：</b>${stock.price}</p>
+    <p><b>涨跌幅：</b><span class="green">${stock.change}</span></p>
+    <p><b>AI 判断：</b>${stock.name} 当前保持原型图中的看盘摘要，点击“分析选中股票”会调用真实分析接口。</p>
+    <p><b>操作建议：</b>先观察关键支撑位和成交量变化，不在首页直接给出交易指令。</p>
+  `);
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value == null ? '' : String(value);
+  return div.innerHTML;
+}
+
+function percent(value) {
+  const number = Number(value || 0);
+  return `${(number * 100).toFixed(0)}%`;
+}
+
+function renderAgentDetail(record) {
+  if (!record.agentData) {
+    return `
+      <div class="agent-detail">
+        <div class="agent-card"><h4>5-Agent 协同分析</h4><p>这条记录为原型预置记录，暂无接口级 Agent 明细。请点击“分析选中股票”生成实时 5-Agent 结果。</p></div>
+      </div>
+    `;
+  }
+
+  const data = record.agentData;
+  const analyst = data.analyst || {};
+  const researcher = data.researcher || {};
+  const trader = data.trader || {};
+  const risk = data.risk || {};
+  const finalResult = data.final || {};
+  const warnings = Array.isArray(risk.warnings) && risk.warnings.length ? risk.warnings.map(item => `⚠️ ${escapeHtml(item)}`).join('<br>') : '暂无风险警示';
+  const suggestions = Array.isArray(risk.suggestions) && risk.suggestions.length ? risk.suggestions.map(item => `💡 ${escapeHtml(item)}`).join('<br>') : '暂无额外建议';
+
+  return `
+    <div class="agent-detail">
+      <div class="agent-section-title">5-Agent 协同分析结果</div>
+      <div class="agent-card">
+        <h4>Agent 1｜技术分析师</h4>
+        <p><b>技术评分：</b><span class="blue">${Number(analyst.score ?? 0).toFixed(3)}</span></p>
+        <div class="agent-report">${escapeHtml(analyst.report || '暂无技术分析报告')}</div>
+      </div>
+      <div class="agent-card">
+        <h4>Agent 2｜研究员</h4>
+        <div class="agent-report">${escapeHtml(researcher.report || '暂无舆情与基本面报告')}</div>
+      </div>
+      <div class="agent-card">
+        <h4>Agent 3｜交易员</h4>
+        <p><b>建议动作：</b><span class="green">${escapeHtml((trader.action || 'hold').toUpperCase())}</span></p>
+        <p><b>置信度：</b>${percent(trader.confidence)}　<b>建议仓位：</b>${percent(trader.position_pct)}</p>
+        <p><b>止损：</b>${Number(trader.stop_loss ?? 0).toFixed(2)}　<b>止盈：</b>${Number(trader.take_profit ?? 0).toFixed(2)}</p>
+        <div class="agent-report">${escapeHtml(trader.reasoning || '暂无交易理由')}</div>
+      </div>
+      <div class="agent-card">
+        <h4>Agent 4｜风控经理</h4>
+        <p><b>风险等级：</b><span class="blue">${escapeHtml(risk.risk_level || '--')}</span>　<b>风险评分：</b>${escapeHtml(risk.risk_score ?? '--')}　<b>是否通过：</b>${risk.pass ? '通过' : '未通过'}</p>
+        <div class="agent-report">${warnings}<br>${suggestions}</div>
+      </div>
+      <div class="agent-card">
+        <h4>Agent 5｜投资组合经理</h4>
+        <p><b>最终动作：</b><span class="green">${escapeHtml((finalResult.final_action || 'hold').toUpperCase())}</span></p>
+        <p><b>最终仓位：</b>${percent(finalResult.position_pct)}　<b>止损：</b>${Number(finalResult.stop_loss ?? 0).toFixed(2)}　<b>止盈：</b>${Number(finalResult.take_profit ?? 0).toFixed(2)}</p>
+        <div class="agent-report">${escapeHtml(finalResult.reasoning || record.summary || '暂无最终决策说明')}</div>
+      </div>
+    </div>
+  `;
+}
+
+function latestRecordForSelected() {
+  return records.find(item => item.code === selected.code && item.agentData) || null;
+}
+
+function openPredictionPanel() {
+  const record = latestRecordForSelected();
+  const data = record?.agentData || {};
+  const kline = Array.isArray(data.kline) ? data.kline : [];
+  const latest = kline.length ? kline[kline.length - 1] : null;
+  const analyst = data.analyst || {};
+  const trader = data.trader || {};
+  const finalResult = data.final || {};
+  const price = Number(latest?.close ?? String(selected.price).replace('¥', '') ?? 0);
+  const atr = Number(analyst.indicators?.atr ?? 0);
+  const support = price && atr ? price - atr : Number(trader.stop_loss ?? finalResult.stop_loss ?? 0);
+  const pressure = price && atr ? price + atr : Number(trader.take_profit ?? finalResult.take_profit ?? 0);
+  openModal(`${selected.name} 精准预测`, `
+    <p><b>预测对象：</b>${selected.name} ${selected.code}</p>
+    <p><b>当前参考价：</b><span class="blue">${price ? price.toFixed(2) : selected.price}</span></p>
+    <p><b>技术评分：</b>${Number(analyst.score ?? 0).toFixed(3)}　<b>建议动作：</b><span class="green">${escapeHtml((finalResult.final_action || trader.action || 'hold').toUpperCase())}</span></p>
+    <p><b>短线支撑位：</b>${support ? support.toFixed(2) : '--'}　<b>短线压力位：</b>${pressure ? pressure.toFixed(2) : '--'}</p>
+    <p><b>建议仓位：</b>${percent(finalResult.position_pct ?? trader.position_pct)}　<b>止损：</b>${Number(finalResult.stop_loss ?? trader.stop_loss ?? 0).toFixed(2)}　<b>止盈：</b>${Number(finalResult.take_profit ?? trader.take_profit ?? 0).toFixed(2)}</p>
+    <p><b>预测说明：</b>${record ? '基于最近一次 5-Agent 分析结果生成。若行情已变化，请先点击“智能分析”重新分析。' : '当前股票还没有实时 5-Agent 分析结果，请先点击“智能分析”生成预测依据。'}</p>
+  `);
+}
+
+async function refreshSelectedQuote() {
+  showToast(`正在刷新 ${selected.name} 实时行情...`);
+  try {
+    const resp = await fetch(`/api/info/${selected.apiCode}`);
+    if (!resp.ok) throw new Error('行情接口不可用');
+    const info = await resp.json();
+    const updated = buildStockFromInfo(info, selected.apiCode);
+    const index = stocks.findIndex(item => item.apiCode === selected.apiCode);
+    if (index >= 0) stocks.splice(index, 1, { ...stocks[index], ...updated });
+    else stocks.unshift(updated);
+    selected = index >= 0 ? stocks[index] : stocks[0];
+    renderStocks();
+    openModal(`${selected.name} 实时监控`, `
+      <p><b>股票代码：</b>${selected.code}</p>
+      <p><b>最新价格：</b><span class="blue">${selected.price}</span></p>
+      <p><b>涨跌幅：</b><span class="green">${selected.change}</span></p>
+      <p><b>刷新时间：</b>${new Date().toLocaleString('zh-CN', { hour12: false })}</p>
+      <p><b>监控状态：</b>行情接口正常，左侧自选股池已同步更新。</p>
+    `);
+  } catch (error) {
+    showToast(`${selected.name} 行情刷新失败，请稍后重试。`);
+  }
+}
+
+function handleHeroFeature(feature) {
+  if (feature === '智能分析') {
+    runAnalysis();
+    return;
+  }
+  if (feature === '精准预测') {
+    openPredictionPanel();
+    return;
+  }
+  if (feature === '实时监控') {
+    refreshSelectedQuote();
+  }
+}
+
+async function runAnalysis() {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.textContent = '分析中...';
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: selected.apiCode, days: 120 })
+    });
+    if (!resp.ok) throw new Error('分析接口暂不可用');
+    const data = await resp.json();
+    const now = new Date().toLocaleString('zh-CN', { hour12: false });
+    records.unshift({
+      name: selected.name,
+      code: selected.code,
+      time: now,
+      type: '综合分析',
+      summary: data?.final?.reasoning || '分析完成，已生成综合看盘结果',
+      tone: 'green',
+      detail: `接口已返回分析结果。股票：${data?.name || selected.name}，价格：${data?.price ?? selected.price}，建议动作：${data?.final?.final_action || 'HOLD'}。`,
+      agentData: data
+    });
+    renderRecords();
+    showToast(`${selected.name} 分析完成，最近分析记录已更新。`);
+  } catch (error) {
+    showToast(`${selected.name} 暂未拿到实时分析数据，当前保持原型展示。`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⌁ 分析选中股票';
+  }
+}
+
+document.getElementById('stockList').addEventListener('click', event => {
+  const card = event.target.closest('.stock-card');
+  if (!card) return;
+  selected = stocks.find(item => item.code === card.dataset.code) || stocks[0];
+  renderStocks();
+  showToast(`已选择 ${selected.name}`);
+});
+
+document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
+document.getElementById('searchInput').addEventListener('keydown', async event => {
+  if (event.key !== 'Enter') return;
+  const keyword = event.target.value.trim();
+  const stock = stockByInput(keyword);
+  if (stock) {
+    selected = stock;
+    renderStocks();
+    showToast(`已定位到 ${selected.name}`);
+    return;
+  }
+  const apiCode = normalizeStockCode(keyword);
+  if (!apiCode) {
+    showToast('请输入 6 位 A 股代码，例如 600776、000001、300750。');
+    return;
+  }
+  showToast(`正在添加 ${apiCode} 到自选股池...`);
+  try {
+    const added = await addStockByCode(apiCode);
+    showToast(`已添加并选中 ${added.name}`);
+  } catch (error) {
+    showToast(`未找到 ${apiCode}，请确认是否为有效 A 股代码。`);
+  }
+});
+
+document.getElementById('recordRows').addEventListener('click', event => {
+  const target = event.target.closest('[data-record]');
+  if (!target) return;
+  const record = records.find(item => item.code === target.dataset.record);
+  if (!record) return;
+  openModal(`${record.name} 分析详情`, `
+    <p><b>分析时间：</b>${record.time}</p>
+    <p><b>分析类型：</b><span class="blue">${record.type}</span></p>
+    <p><b>结果摘要：</b><span class="green">${record.summary}</span></p>
+    <p><b>详细说明：</b>${record.detail}</p>
+    ${renderAgentDetail(record)}
+  `);
+});
+
+document.getElementById('showAllRecordsBtn').addEventListener('click', () => {
+  openModal('全部分析记录', records.map(item => `<p><b>${item.name}</b> ${item.code}<br><span class="blue">${item.type}</span> · ${item.time}<br><span class="green">${item.summary}</span></p>`).join(''));
+});
+
+document.getElementById('helpBtn').addEventListener('click', () => {
+  openModal('使用帮助', '<p>1. 点击左侧自选股切换当前股票。</p><p>2. 在搜索框输入任意 6 位 A 股代码后回车，可自动加入自选股池并选中。</p><p>3. 已加入的股票也可继续用代码或名称快速定位。</p><p>4. 点击“分析选中股票”会调用后端 5-Agent 分析接口。</p><p>5. 点击“查看详情”可查看完整协同分析报告。</p>');
+});
+
+document.getElementById('editWatchlistBtn').addEventListener('click', () => showToast('在搜索框输入 6 位 A 股代码并回车，即可加入自选股池。'));
+document.getElementById('notifyBtn').addEventListener('click', () => showToast('暂无新的系统通知。'));
+document.getElementById('profileBtn').addEventListener('click', () => showToast('当前为本地演示账户，服务在线。'));
+document.querySelectorAll('[data-feature]').forEach(item => item.addEventListener('click', () => handleHeroFeature(item.dataset.feature)));
+document.getElementById('indexCards').addEventListener('click', event => {
+  const card = event.target.closest('[data-index]');
+  if (!card) return;
+  openIndexDetail(card.dataset.index);
+});
+document.getElementById('indexCards').addEventListener('keydown', event => {
+  if (event.key !== 'Enter') return;
+  const card = event.target.closest('[data-index]');
+  if (card) openIndexDetail(card.dataset.index);
+});
+document.getElementById('marketBreadthBtn').addEventListener('click', openMarketBreadth);
+document.getElementById('marketBreadthBtn').addEventListener('keydown', event => { if (event.key === 'Enter') openMarketBreadth(); });
+document.getElementById('sentimentDetailBtn').addEventListener('click', openSentimentDetail);
+document.getElementById('sentimentDetailBtn').addEventListener('keydown', event => { if (event.key === 'Enter') openSentimentDetail(); });
+document.querySelectorAll('[data-market-info]').forEach(item => item.addEventListener('click', event => {
+  event.stopPropagation();
+  openMarketInfo(item.dataset.marketInfo);
+}));
+document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+document.getElementById('modalMask').addEventListener('click', event => { if (event.target.id === 'modalMask') closeModal(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
+
+renderStocks();
+renderIndexes();
+renderRecords();
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>

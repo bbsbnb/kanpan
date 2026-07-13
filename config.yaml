@@ -1,0 +1,55 @@
+# AI智能看盘系统配置
+app:
+  name: "AI Stock Trader"
+  version: "0.1.0"
+  debug: false
+
+data:
+  # 数据源: akshare/tushare
+  source: "akshare"
+  # 缓存目录
+  cache_dir: "./data/cache"
+  # 缓存过期时间(小时)
+  cache_ttl: 24
+
+trading:
+  # 市场: a_stock/us_stock/crypto
+  market: "a_stock"
+  # 默认交易币种
+  default_codes:
+    - "600519"  # 贵州茅台
+    - "000858"  # 五粮液
+    - "300750"  # 宁德时代
+
+indicators:
+  # 默认周期: 1d/5d/15d/30d/60d
+  default_period: "1d"
+  # K线回溯天数
+  lookback_days: 120
+  
+  # 技术指标列表
+  ma_periods: [5, 10, 20, 60, 120, 250]
+  macd:
+    fast: 12
+    slow: 26
+    signal: 9
+  rsi_period: 14
+  boll:
+    period: 20
+    std: 2
+
+risk:
+  # 单票最大仓位比例
+  max_position_pct: 0.2
+  # 止损比例
+  stop_loss_pct: 0.05
+  # 止盈比例
+  take_profit_pct: 0.15
+  # 最大回撤限制
+  max_drawdown_pct: 0.10
+
+llm:
+  # LLM配置(预留)
+  provider: "openai"
+  model: "gpt-4o-mini"
+  temperature: 0.3
