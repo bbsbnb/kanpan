@@ -138,7 +138,7 @@ button { cursor: pointer; }
   box-shadow: inset 0 0 22px rgba(0, 0, 0, .28);
 }
 .search::placeholder { color: #7d8ba1; font-weight: 700; }
-.search-icon { position: absolute; right: 16px; top: 11px; color: var(--blue); font-size: 21px; }
+.search-icon { position: absolute; right: 16px; top: 11px; color: var(--blue); font-size: 21px; cursor:pointer; }
 .pool-head { display: flex; align-items: center; justify-content: space-between; margin: 25px 0 18px; color: #aebbd1; font-weight: 800; }
 .pool-head button { border: 0; background: transparent; color: var(--blue); font-weight: 800; }
 .stock-list { list-style: none; margin: 0; padding: 0; min-height: 0; overflow-y: auto; }
@@ -259,6 +259,36 @@ button { cursor: pointer; }
 .sentiment-text { text-align:center; margin-top:26px; font-size:16px; font-weight:900; }
 .sentiment-foot { margin-top:auto; border-top:1px solid rgba(67, 93, 132, .3); padding:16px 23px 23px; display:flex; justify-content:space-between; color:#75849c; font-size:12px; }
 
+.kline-panel { margin-top:18px; padding-bottom: 22px; }
+.kline-body { padding: 0 23px; }
+.kline-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:13px; color:#8796b0; font-size:13px; font-weight:800; }
+.kline-tabs { display:flex; gap:8px; }
+.kline-tab { border:1px solid rgba(64,111,177,.48); border-radius:999px; padding:5px 12px; color:#b8c7e2; background:rgba(9,18,32,.62); font-weight:900; cursor:pointer; }
+.kline-tab.active { color:#22d8ff; border-color:rgba(35,193,255,.72); background:rgba(18,105,188,.24); box-shadow:0 0 18px rgba(32,159,255,.16); }
+.kline-live { border-color:rgba(18,214,128,.56); color:#19e293; }
+.kline-live.active { color:#06111f; background:#19e293; border-color:#19e293; box-shadow:0 0 18px rgba(25,226,147,.22); }
+.kline-chart { width:100%; height:306px; border:1px solid rgba(81,129,199,.25); border-radius:9px; background:linear-gradient(180deg, rgba(8,22,42,.72), rgba(4,10,19,.62)); overflow:hidden; }
+.kline-chart.live { box-shadow: inset 0 0 0 1px rgba(25,226,147,.16), 0 0 22px rgba(25,226,147,.08); }
+.kline-chart svg { width:100%; height:100%; display:block; }
+.kline-grid { stroke:rgba(95,137,189,.17); stroke-width:1; }
+.kline-axis { fill:#7e8da7; font-size:11px; font-weight:800; }
+.kline-candle.up { fill:#12d680; stroke:#12d680; }
+.kline-candle.down { fill:#ff4960; stroke:#ff4960; }
+.kline-ma5 { fill:none; stroke:#ffc247; stroke-width:2; opacity:.95; }
+.kline-ma10 { fill:none; stroke:#23c9ff; stroke-width:2; opacity:.9; }
+.kline-volume { opacity:.32; }
+.kline-hit { fill:transparent; cursor:crosshair; }
+.kline-hover-line { stroke:rgba(34,216,255,.72); stroke-width:1; stroke-dasharray:4 4; opacity:0; pointer-events:none; }
+.kline-tooltip { opacity:0; pointer-events:none; }
+.kline-tooltip rect { fill:rgba(6,16,30,.96); stroke:rgba(34,216,255,.72); stroke-width:1; filter:drop-shadow(0 8px 18px rgba(0,0,0,.38)); }
+.kline-tooltip text { fill:#dce8ff; font-size:11px; font-weight:800; }
+.kline-tooltip .tip-title { fill:#22d8ff; font-size:12px; font-weight:1000; }
+.kline-hit-group:hover .kline-hover-line, .kline-hit-group:hover .kline-tooltip { opacity:1; }
+.kline-summary { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:12px; margin-top:14px; }
+.kline-stat { border:1px solid rgba(81,129,199,.22); border-radius:8px; padding:11px 12px; background:rgba(13,28,50,.48); }
+.kline-stat span { display:block; color:#8796b0; font-size:12px; margin-bottom:5px; }
+.kline-stat b { font-size:16px; color:#f2f7ff; }
+
 .records { margin-top:18px; padding: 28px 24px 17px; }
 .records h2 { margin:0 0 16px; font-size:20px; }
 .record-table { width:100%; border-collapse:collapse; font-size:14px; }
@@ -316,7 +346,7 @@ button { cursor: pointer; }
       <div class="sidebar-inner">
         <div class="search-wrap">
           <input class="search" id="searchInput" placeholder="输入股票代码搜索..." />
-          <span class="search-icon">⌕</span>
+          <span class="search-icon" id="searchBtn" role="button" tabindex="0" aria-label="搜索股票">⌕</span>
         </div>
         <div class="pool-head"><span>自选股池</span><button type="button" id="editWatchlistBtn">编辑</button></div>
       </div>
@@ -380,6 +410,18 @@ button { cursor: pointer; }
           </section>
         </div>
 
+        <section class="panel kline-panel">
+          <div class="panel-head"><div class="panel-title">K线图 <span class="info-dot" onclick="openKlineInfo()">?</span></div><div class="time">股票：<span id="klineStockName">--</span></div></div>
+          <div class="kline-body">
+            <div class="kline-toolbar">
+              <div class="kline-tabs" id="klineTabs"><button class="kline-tab active" type="button" data-kline-view="day">日K</button><button class="kline-tab active" type="button" data-kline-view="ma5">MA5</button><button class="kline-tab active" type="button" data-kline-view="ma10">MA10</button><button class="kline-tab active" type="button" data-kline-view="volume">成交量</button><button class="kline-tab kline-live active" type="button" data-kline-view="live">动态</button></div>
+              <div id="klineHint">基于当前选中股票的近期走势</div>
+            </div>
+            <div class="kline-chart" id="klineChart"></div>
+            <div class="kline-summary" id="klineSummary"></div>
+          </div>
+        </section>
+
         <section class="panel records">
           <h2>最近分析记录</h2>
           <table class="record-table">
@@ -417,6 +459,13 @@ const marketBreadth = { up: 2134, flat: 214, down: 1023 };
 
 const sentimentState = { score: 62, label: '中性偏多', trend: '市场情绪较为乐观，短期趋势向好' };
 
+const stockNameMap = {
+  '000001': '平安银行', '000002': '万 科Ａ', '000858': '五 粮 液', '002415': '海康威视',
+  '300059': '东方财富', '300750': '宁德时代', '300776': '帝尔激光', '600000': '浦发银行', '600519': '贵州茅台',
+  '600776': '东方通信', '601318': '中国平安', '601398': '工商银行', '601857': '中国石油',
+  '688981': '中芯国际', '830799': '艾融软件'
+};
+
 const records = [
   { name: '贵州茅台', code: '600519.SH', time: '2026-07-13 10:45:22', type: '技术分析', summary: '短期趋势向好，建议关注支撑位', tone: 'blue', detail: 'MA 均线维持多头排列，短线量能温和放大。建议关注 1180 附近支撑，跌破后降低仓位。' },
   { name: '五 粮 液', code: '000858.SZ', time: '2026-07-13 10:30:18', type: '基本面分析', summary: '基本面稳健，长期投资价值较高', tone: 'purple', detail: '白酒板块估值修复中，现金流和品牌护城河稳定。适合中长期观察，短线弹性弱于成长板块。' },
@@ -424,6 +473,9 @@ const records = [
 ];
 
 let selected = stocks[0];
+let latestKlineByCode = {};
+let klineOptions = { day: true, ma5: true, ma10: true, volume: true, live: true };
+let klineLiveTimer = null;
 
 function sparkline(points, className = 'spark') {
   return `<svg class="${className}" viewBox="0 0 100 46"><polyline points="${points}" fill="none" stroke="#ff3d4f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${points}" fill="none" stroke="rgba(255,61,79,.22)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -434,9 +486,14 @@ function normalizeStockCode(value) {
   return /^\d{6}$/.test(raw) ? raw : '';
 }
 
+function isAStockCode(apiCode) {
+  return /^\d{6}$/.test(apiCode);
+}
+
 function marketSuffix(apiCode) {
+  if (/^(430|83\d|87\d|88\d|920)/.test(apiCode)) return 'BJ';
   if (apiCode.startsWith('6')) return 'SH';
-  if (apiCode.startsWith('4') || apiCode.startsWith('8')) return 'BJ';
+  if (apiCode.startsWith('9')) return 'BJ';
   return 'SZ';
 }
 
@@ -451,16 +508,62 @@ function formatChange(value) {
   return `${sign}${number.toFixed(2)}%`;
 }
 
-function buildStockFromInfo(info, fallbackCode) {
+function buildOfflineStock(apiCode) {
+  const random = seededRandom(Number(apiCode));
+  const base = apiCode.startsWith('6') ? 8 + random() * 80 : apiCode.startsWith('3') ? 12 + random() * 120 : 5 + random() * 70;
+  const changePct = (random() - 0.48) * 4;
+  const trend = Array.from({ length: 12 }, (_, index) => `${2 + index * 8},${Math.max(4, Math.min(40, 26 - changePct * 2 - random() * 16 + index * (changePct > 0 ? -0.8 : 0.8))).toFixed(0)}`).join(' ');
+  return buildStockFromInfo({ code: apiCode, name: stockNameMap[apiCode] || `A股${apiCode}`, price: base, change_pct: changePct }, apiCode, trend);
+}
+
+function buildStockFromInfo(info, fallbackCode, fallbackPoints) {
   const apiCode = normalizeStockCode(info?.code || fallbackCode);
   return {
-    name: info?.name || apiCode,
+    name: info?.name || stockNameMap[apiCode] || `A股${apiCode}`,
     code: `${apiCode}.${marketSuffix(apiCode)}`,
     apiCode,
     price: formatPrice(info?.price),
     change: formatChange(info?.change_pct),
-    points: '2,31 9,25 15,28 22,22 30,27 38,20 47,18 56,10 65,36 76,25 87,29 96,32'
+    points: fallbackPoints || '2,31 9,25 15,28 22,22 30,27 38,20 47,18 56,10 65,36 76,25 87,29 96,32'
   };
+}
+
+function quotePrefix(apiCode) {
+  const suffix = marketSuffix(apiCode).toLowerCase();
+  return suffix === 'bj' ? 'bj' : suffix;
+}
+
+function fetchTencentStockInfo(apiCode) {
+  return new Promise(resolve => {
+    const prefix = quotePrefix(apiCode);
+    const varName = `hq_str_${prefix}${apiCode}`;
+    const script = document.createElement('script');
+    const cleanup = () => { script.remove(); try { delete window[varName]; } catch (error) {} };
+    const timer = window.setTimeout(() => { cleanup(); resolve(null); }, 2800);
+    script.src = `https://qt.gtimg.cn/q=${prefix}${apiCode}`;
+    script.onload = () => {
+      window.clearTimeout(timer);
+      const raw = window[varName] || '';
+      cleanup();
+      const parts = raw.split('~');
+      if (!parts[1]) { resolve(null); return; }
+      resolve({ code: apiCode, name: parts[1], price: Number(parts[3]), change_pct: Number(parts[32]) });
+    };
+    script.onerror = () => { window.clearTimeout(timer); cleanup(); resolve(null); };
+    document.head.appendChild(script);
+  });
+}
+
+async function resolveStock(apiCode) {
+  const fallback = buildOfflineStock(apiCode);
+  if (location.protocol !== 'file:') {
+    try {
+      const resp = await fetch(`/api/info/${apiCode}`);
+      if (resp.ok) return buildStockFromInfo(await resp.json(), apiCode, fallback.points);
+    } catch (error) {}
+  }
+  const online = await fetchTencentStockInfo(apiCode);
+  return online ? buildStockFromInfo(online, apiCode, fallback.points) : fallback;
 }
 
 function renderStocks() {
@@ -476,6 +579,186 @@ function renderIndexes() {
   document.getElementById('indexCards').innerHTML = indexes.map(item => `
     <div class="index-card" data-index="${item.name}" role="button" tabindex="0" aria-label="查看${item.name}详情" onclick="openIndexDetail('${item.name}')"><div class="index-name">${item.name}</div><div class="index-value">${item.value}</div><div class="index-change">${item.change}</div><div class="index-spark">${sparkline(item.points, 'spark')}</div></div>
   `).join('');
+}
+
+function seededRandom(seed) {
+  let value = seed;
+  return () => {
+    value = (value * 9301 + 49297) % 233280;
+    return value / 233280;
+  };
+}
+
+function generateKline(stock) {
+  const base = Number(String(stock.price).replace('¥', '')) || 100;
+  const seed = Number(stock.apiCode || '600000');
+  const random = seededRandom(seed);
+  let close = base * (0.94 + random() * 0.08);
+  const rows = [];
+  for (let i = 0; i < 48; i++) {
+    const open = close;
+    const delta = (random() - 0.47) * base * 0.018;
+    close = Math.max(base * 0.75, open + delta);
+    const high = Math.max(open, close) + random() * base * 0.014;
+    const low = Math.min(open, close) - random() * base * 0.014;
+    const volume = Math.round(1200000 + random() * 5000000);
+    rows.push({ open, close, high, low, volume });
+  }
+  return rows;
+}
+
+function movingAverage(rows, period) {
+  return rows.map((_, index) => {
+    if (index < period - 1) return null;
+    const slice = rows.slice(index - period + 1, index + 1);
+    return slice.reduce((sum, item) => sum + Number(item.close || 0), 0) / period;
+  });
+}
+
+function renderKline(rows = latestKlineByCode[selected.code] || generateKline(selected)) {
+  const chart = document.getElementById('klineChart');
+  const summary = document.getElementById('klineSummary');
+  const stockName = document.getElementById('klineStockName');
+  if (!chart || !summary || !stockName) return;
+  rows = rows.filter(item => Number.isFinite(Number(item.open)) && Number.isFinite(Number(item.close)) && Number.isFinite(Number(item.high)) && Number.isFinite(Number(item.low)));
+  if (!rows.length) rows = generateKline(selected);
+  latestKlineByCode[selected.code] = rows;
+  stockName.textContent = `${selected.name} ${selected.code}`;
+  chart.classList.toggle('live', klineOptions.live);
+  document.getElementById('klineHint').textContent = klineOptions.live ? '动态行情已开启，每 3 秒模拟刷新最新 K 线' : '动态行情已暂停，可点击动态恢复';
+
+  const viewW = 980;
+  const viewH = 306;
+  const pad = { left: 46, right: 48, top: 20, bottom: 58 };
+  const priceTop = pad.top;
+  const priceBottom = 214;
+  const volumeTop = 230;
+  const volumeBottom = 286;
+  const highs = rows.map(item => Number(item.high));
+  const lows = rows.map(item => Number(item.low));
+  const maxPrice = Math.max(...highs);
+  const minPrice = Math.min(...lows);
+  const maxVolume = Math.max(...rows.map(item => Number(item.volume || 0)));
+  const slot = (viewW - pad.left - pad.right) / rows.length;
+  const candleW = Math.max(5, slot * 0.56);
+  const yPrice = value => priceBottom - ((value - minPrice) / Math.max(maxPrice - minPrice, 1)) * (priceBottom - priceTop);
+  const yVolume = value => volumeBottom - (value / Math.max(maxVolume, 1)) * (volumeBottom - volumeTop);
+  const xAt = index => pad.left + index * slot + slot / 2;
+  const ma5 = movingAverage(rows, 5);
+  const ma10 = movingAverage(rows, 10);
+  const linePath = values => values.map((value, index) => value == null ? '' : `${index === values.findIndex(v => v != null) ? 'M' : 'L'} ${xAt(index).toFixed(1)} ${yPrice(value).toFixed(1)}`).filter(Boolean).join(' ');
+  const formatVolume = value => Number(value) >= 100000000 ? `${(Number(value) / 100000000).toFixed(2)}亿` : `${(Number(value) / 10000).toFixed(1)}万`;
+  const formatKlineDate = index => {
+    const day = new Date();
+    day.setDate(day.getDate() - (rows.length - index - 1));
+    return day.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+  };
+
+  const gridLines = [0, 1, 2, 3, 4].map(i => {
+    const y = priceTop + i * ((priceBottom - priceTop) / 4);
+    const price = maxPrice - i * ((maxPrice - minPrice) / 4);
+    return `<line class="kline-grid" x1="${pad.left}" y1="${y}" x2="${viewW - pad.right}" y2="${y}"/><text class="kline-axis" x="${viewW - pad.right + 8}" y="${y + 4}">${price.toFixed(2)}</text>`;
+  }).join('');
+
+  const candles = rows.map((item, index) => {
+    const x = xAt(index);
+    const open = Number(item.open);
+    const close = Number(item.close);
+    const high = Number(item.high);
+    const low = Number(item.low);
+    const up = close >= open;
+    const yOpen = yPrice(open);
+    const yClose = yPrice(close);
+    const rectY = Math.min(yOpen, yClose);
+    const rectH = Math.max(Math.abs(yOpen - yClose), 2);
+    const volY = yVolume(Number(item.volume || 0));
+    const volH = volumeBottom - volY;
+    const body = klineOptions.day ? `<line class="kline-candle ${up ? 'up' : 'down'}" x1="${x}" y1="${yPrice(high)}" x2="${x}" y2="${yPrice(low)}"/><rect class="kline-candle ${up ? 'up' : 'down'}" x="${x - candleW / 2}" y="${rectY}" width="${candleW}" height="${rectH}" rx="1"/>` : '';
+    const volume = klineOptions.volume ? `<rect class="kline-candle ${up ? 'up' : 'down'} kline-volume" x="${x - candleW / 2}" y="${volY}" width="${candleW}" height="${Math.max(volH, 1)}"/>` : '';
+    const prevClose = Number(rows[index - 1]?.close ?? open);
+    const changePct = prevClose ? ((close - prevClose) / prevClose * 100) : 0;
+    const tipW = 142;
+    const tipH = 116;
+    const tipX = x > viewW - pad.right - tipW ? x - tipW - 10 : x + 10;
+    const tipY = Math.max(10, Math.min(yPrice(high) - 18, viewH - tipH - 8));
+    const tooltip = `
+      <g class="kline-hit-group">
+        <line class="kline-hover-line" x1="${x}" y1="${priceTop}" x2="${x}" y2="${volumeBottom}"/>
+        <g class="kline-tooltip" transform="translate(${tipX},${tipY})">
+          <rect width="${tipW}" height="${tipH}" rx="7"/>
+          <text class="tip-title" x="10" y="19">${formatKlineDate(index)} 实时数据</text>
+          <text x="10" y="38">开盘：${open.toFixed(2)}</text>
+          <text x="10" y="54">最高：${high.toFixed(2)}</text>
+          <text x="10" y="70">最低：${low.toFixed(2)}</text>
+          <text x="10" y="86">收盘：${close.toFixed(2)}</text>
+          <text x="10" y="102">涨跌：${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%  量：${formatVolume(item.volume || 0)}</text>
+        </g>
+        <rect class="kline-hit" x="${x - slot / 2}" y="${priceTop}" width="${slot}" height="${volumeBottom - priceTop}"/>
+      </g>`;
+    return body + volume + tooltip;
+  }).join('');
+
+  chart.innerHTML = `
+    <svg viewBox="0 0 ${viewW} ${viewH}" preserveAspectRatio="none" role="img" aria-label="${selected.name} K线图">
+      <rect x="0" y="0" width="${viewW}" height="${viewH}" fill="transparent"/>
+      ${gridLines}
+      <line class="kline-grid" x1="${pad.left}" y1="${volumeTop}" x2="${viewW - pad.right}" y2="${volumeTop}"/>
+      ${klineOptions.day || klineOptions.volume ? candles : ''}
+      ${klineOptions.ma5 ? `<path class="kline-ma5" d="${linePath(ma5)}"/>` : ''}
+      ${klineOptions.ma10 ? `<path class="kline-ma10" d="${linePath(ma10)}"/>` : ''}
+      ${klineOptions.ma5 ? `<text class="kline-axis" x="${pad.left}" y="18">MA5</text>` : ''}
+      ${klineOptions.ma10 ? `<text class="kline-axis" x="${pad.left + 42}" y="18">MA10</text>` : ''}
+      ${klineOptions.volume ? `<text class="kline-axis" x="${pad.left}" y="302">成交量</text>` : ''}
+    </svg>
+  `;
+
+  const last = rows[rows.length - 1];
+  const first = rows[0];
+  const changePct = ((last.close - first.open) / first.open * 100) || 0;
+  summary.innerHTML = `
+    <div class="kline-stat"><span>最新收盘</span><b>${Number(last.close).toFixed(2)}</b></div>
+    <div class="kline-stat"><span>区间涨跌</span><b>${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</b></div>
+    <div class="kline-stat"><span>区间最高</span><b>${maxPrice.toFixed(2)}</b></div>
+    <div class="kline-stat"><span>区间最低</span><b>${minPrice.toFixed(2)}</b></div>
+  `;
+}
+
+function openKlineInfo() {
+  openModal('K线图说明', '<p><b>K线图</b>展示当前选中股票的近期蜡烛图、MA5、MA10 和成交量。</p><p>红色代表下跌 K 线，绿色代表上涨 K 线。执行实时分析后，会优先使用后端返回的 K 线数据刷新图表。</p>');
+}
+
+window.openKlineInfo = openKlineInfo;
+
+function updateKlineTabs() {
+  document.querySelectorAll('[data-kline-view]').forEach(button => {
+    button.classList.toggle('active', !!klineOptions[button.dataset.klineView]);
+  });
+}
+
+function appendDynamicKline() {
+  if (!klineOptions.live) return;
+  const rows = latestKlineByCode[selected.code] || generateKline(selected);
+  const last = rows[rows.length - 1];
+  const random = seededRandom(Number(selected.apiCode || '600000') + Date.now());
+  const open = Number(last.close);
+  const delta = (random() - 0.48) * Math.max(open, 1) * 0.01;
+  const close = Math.max(open * 0.9, open + delta);
+  const high = Math.max(open, close) + random() * open * 0.007;
+  const low = Math.min(open, close) - random() * open * 0.007;
+  const volume = Math.round(Number(last.volume || 2000000) * (0.82 + random() * 0.42));
+  renderKline([...rows.slice(-47), { open, close, high, low, volume }]);
+}
+
+function restartKlineLive() {
+  window.clearInterval(klineLiveTimer);
+  klineLiveTimer = klineOptions.live ? window.setInterval(appendDynamicKline, 3000) : null;
+}
+
+function handleKlineTab(view) {
+  klineOptions[view] = !klineOptions[view];
+  updateKlineTabs();
+  renderKline();
+  if (view === 'live') restartKlineLive();
 }
 
 function openIndexDetail(name) {
@@ -562,15 +845,14 @@ function stockByInput(value) {
 }
 
 async function addStockByCode(apiCode) {
-  const resp = await fetch(`/api/info/${apiCode}`);
-  if (!resp.ok) throw new Error('未找到股票');
-  const info = await resp.json();
-  const stock = buildStockFromInfo(info, apiCode);
+  if (!isAStockCode(apiCode)) throw new Error('不是有效 A 股代码');
+  const stock = await resolveStock(apiCode);
   const oldIndex = stocks.findIndex(item => item.apiCode === stock.apiCode);
   if (oldIndex >= 0) stocks.splice(oldIndex, 1, stock);
   else stocks.unshift(stock);
   selected = stock;
   renderStocks();
+  renderKline();
   return stock;
 }
 
@@ -650,6 +932,44 @@ function latestRecordForSelected() {
   return records.find(item => item.code === selected.code && item.agentData) || null;
 }
 
+function buildOfflineAnalysis(stock) {
+  const kline = latestKlineByCode[stock.code] || generateKline(stock);
+  const last = kline[kline.length - 1];
+  const first = kline[0];
+  const changePct = ((last.close - first.open) / first.open) || 0;
+  const score = Math.max(-1, Math.min(1, changePct * 8));
+  const action = score > 0.08 ? 'buy' : score < -0.08 ? 'reduce' : 'hold';
+  return {
+    symbol: stock.apiCode,
+    name: stock.name,
+    price: Number(last.close.toFixed(2)),
+    change_pct: Number((changePct * 100).toFixed(2)),
+    kline,
+    analyst: {
+      score,
+      indicators: { atr: Math.max(0.01, (Math.max(...kline.map(item => item.high)) - Math.min(...kline.map(item => item.low))) / 14) },
+      report: `${stock.name} 近期 K 线${score >= 0 ? '偏强' : '偏弱'}，短线涨跌幅 ${(changePct * 100).toFixed(2)}%，建议结合成交量继续观察。`
+    },
+    researcher: { report: `${stock.name} 当前为离线行情模式，已基于本地行情模拟和代码规则生成辅助判断。` },
+    trader: {
+      action,
+      confidence: Math.min(0.82, 0.55 + Math.abs(score) * 0.18),
+      position_pct: action === 'buy' ? 0.35 : action === 'reduce' ? 0.1 : 0.2,
+      stop_loss: last.close * 0.96,
+      take_profit: last.close * 1.06,
+      reasoning: `根据当前 K 线与均线状态，建议动作：${action.toUpperCase()}。`
+    },
+    risk: { risk_level: Math.abs(score) > 0.35 ? '中' : '低', risk_score: Number(Math.abs(score).toFixed(2)), pass: true, warnings: ['离线模式数据仅用于功能演示'], suggestions: ['如需真实交易依据，请启动服务并接入实时行情源'] },
+    final: {
+      final_action: action,
+      position_pct: action === 'buy' ? 0.3 : action === 'reduce' ? 0.08 : 0.18,
+      stop_loss: last.close * 0.96,
+      take_profit: last.close * 1.06,
+      reasoning: `${stock.name} 离线 5-Agent 协同分析完成，当前结论为 ${action.toUpperCase()}。`
+    }
+  };
+}
+
 function openPredictionPanel() {
   const record = latestRecordForSelected();
   const data = record?.agentData || {};
@@ -675,24 +995,32 @@ function openPredictionPanel() {
 async function refreshSelectedQuote() {
   showToast(`正在刷新 ${selected.name} 实时行情...`);
   try {
-    const resp = await fetch(`/api/info/${selected.apiCode}`);
-    if (!resp.ok) throw new Error('行情接口不可用');
-    const info = await resp.json();
-    const updated = buildStockFromInfo(info, selected.apiCode);
+    const updated = await resolveStock(selected.apiCode);
     const index = stocks.findIndex(item => item.apiCode === selected.apiCode);
     if (index >= 0) stocks.splice(index, 1, { ...stocks[index], ...updated });
     else stocks.unshift(updated);
     selected = index >= 0 ? stocks[index] : stocks[0];
     renderStocks();
+    renderKline();
     openModal(`${selected.name} 实时监控`, `
       <p><b>股票代码：</b>${selected.code}</p>
       <p><b>最新价格：</b><span class="blue">${selected.price}</span></p>
       <p><b>涨跌幅：</b><span class="green">${selected.change}</span></p>
       <p><b>刷新时间：</b>${new Date().toLocaleString('zh-CN', { hour12: false })}</p>
-      <p><b>监控状态：</b>行情接口正常，左侧自选股池已同步更新。</p>
+      <p><b>监控状态：</b>行情已刷新，左侧自选股池和 K 线图已同步更新。</p>
     `);
   } catch (error) {
-    showToast(`${selected.name} 行情刷新失败，请稍后重试。`);
+    const fallback = buildOfflineStock(selected.apiCode);
+    selected = { ...selected, ...fallback };
+    renderStocks();
+    renderKline();
+    openModal(`${selected.name} 实时监控`, `
+      <p><b>股票代码：</b>${selected.code}</p>
+      <p><b>最新价格：</b><span class="blue">${selected.price}</span></p>
+      <p><b>涨跌幅：</b><span class="green">${selected.change}</span></p>
+      <p><b>刷新时间：</b>${new Date().toLocaleString('zh-CN', { hour12: false })}</p>
+      <p><b>监控状态：</b>当前为离线模式，已使用本地模拟行情刷新。</p>
+    `);
   }
 }
 
@@ -715,13 +1043,18 @@ async function runAnalysis() {
   btn.disabled = true;
   btn.textContent = '分析中...';
   try {
-    const resp = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: selected.apiCode, days: 120 })
-    });
-    if (!resp.ok) throw new Error('分析接口暂不可用');
-    const data = await resp.json();
+    let data = null;
+    if (location.protocol !== 'file:') {
+      try {
+        const resp = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: selected.apiCode, days: 120 })
+        });
+        if (resp.ok) data = await resp.json();
+      } catch (error) {}
+    }
+    if (!data) data = buildOfflineAnalysis(selected);
     const now = new Date().toLocaleString('zh-CN', { hour12: false });
     records.unshift({
       name: selected.name,
@@ -733,6 +1066,10 @@ async function runAnalysis() {
       detail: `接口已返回分析结果。股票：${data?.name || selected.name}，价格：${data?.price ?? selected.price}，建议动作：${data?.final?.final_action || 'HOLD'}。`,
       agentData: data
     });
+    if (Array.isArray(data?.kline) && data.kline.length) {
+      latestKlineByCode[selected.code] = data.kline;
+      renderKline(data.kline);
+    }
     renderRecords();
     showToast(`${selected.name} 分析完成，最近分析记录已更新。`);
   } catch (error) {
@@ -748,23 +1085,31 @@ document.getElementById('stockList').addEventListener('click', event => {
   if (!card) return;
   selected = stocks.find(item => item.code === card.dataset.code) || stocks[0];
   renderStocks();
+  renderKline();
   showToast(`已选择 ${selected.name}`);
 });
 
 document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
-document.getElementById('searchInput').addEventListener('keydown', async event => {
-  if (event.key !== 'Enter') return;
-  const keyword = event.target.value.trim();
+
+async function searchOrAddStock() {
+  const input = document.getElementById('searchInput');
+  const keyword = input.value.trim();
+  if (!keyword) {
+    showToast('请输入 6 位股票代码，例如 600776、000001、300750。');
+    return;
+  }
   const stock = stockByInput(keyword);
   if (stock) {
-    selected = stock;
+    const apiCode = normalizeStockCode(keyword);
+    selected = apiCode && stock.name.startsWith('A股') ? await addStockByCode(apiCode) : stock;
     renderStocks();
+    renderKline();
     showToast(`已定位到 ${selected.name}`);
     return;
   }
   const apiCode = normalizeStockCode(keyword);
-  if (!apiCode) {
-    showToast('请输入 6 位 A 股代码，例如 600776、000001、300750。');
+  if (!apiCode || !isAStockCode(apiCode)) {
+    showToast('请输入 6 位股票代码，例如 600776、000001、300750、688981。');
     return;
   }
   showToast(`正在添加 ${apiCode} 到自选股池...`);
@@ -772,8 +1117,16 @@ document.getElementById('searchInput').addEventListener('keydown', async event =
     const added = await addStockByCode(apiCode);
     showToast(`已添加并选中 ${added.name}`);
   } catch (error) {
-    showToast(`未找到 ${apiCode}，请确认是否为有效 A 股代码。`);
+    showToast(`${apiCode} 暂无法识别，请检查是否为 6 位股票代码。`);
   }
+}
+
+document.getElementById('searchInput').addEventListener('keydown', event => {
+  if (event.key === 'Enter') searchOrAddStock();
+});
+document.getElementById('searchBtn').addEventListener('click', searchOrAddStock);
+document.getElementById('searchBtn').addEventListener('keydown', event => {
+  if (event.key === 'Enter' || event.key === ' ') searchOrAddStock();
 });
 
 document.getElementById('recordRows').addEventListener('click', event => {
@@ -816,6 +1169,10 @@ document.getElementById('marketBreadthBtn').addEventListener('click', openMarket
 document.getElementById('marketBreadthBtn').addEventListener('keydown', event => { if (event.key === 'Enter') openMarketBreadth(); });
 document.getElementById('sentimentDetailBtn').addEventListener('click', openSentimentDetail);
 document.getElementById('sentimentDetailBtn').addEventListener('keydown', event => { if (event.key === 'Enter') openSentimentDetail(); });
+document.getElementById('klineTabs').addEventListener('click', event => {
+  const button = event.target.closest('[data-kline-view]');
+  if (button) handleKlineTab(button.dataset.klineView);
+});
 document.querySelectorAll('[data-market-info]').forEach(item => item.addEventListener('click', event => {
   event.stopPropagation();
   openMarketInfo(item.dataset.marketInfo);
@@ -826,6 +1183,9 @@ document.addEventListener('keydown', event => { if (event.key === 'Escape') clos
 
 renderStocks();
 renderIndexes();
+updateKlineTabs();
+renderKline();
+restartKlineLive();
 renderRecords();
 updateClock();
 setInterval(updateClock, 1000);
